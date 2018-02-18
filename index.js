@@ -3,21 +3,13 @@ const http = require("http");
 const path = require("path");
 const formidable = require("formidable");
 const fs = require("fs");
-var trackHelper = require('./lib/geotrackHelper');
+const gpxParser = require("./lib/gpxParser");
+const geoTrackHelper = require("./lib/geoTrackHelper");
 
 
 var app = express();
 app.set("views",path.resolve(__dirname,"views"));
 app.set("view engine","ejs");
-
-var emiter = trackHelper.emiter();
-var distance=0;
-emiter.on('data-loaded', function(data){
-    var distance = trackHelper.getTotalDistance(data);
-    console.log(distance);
-});
-
-
 
 var staticPath = path.resolve(__dirname,"app");
 app.use("/app",express.static(staticPath));
@@ -37,10 +29,11 @@ app.post("/upload",function(req,res){
     });
 
     form.on("file",function(name,file){
-        trackHelper.loadFile(file.path,emiter);
+        gpxParser.getPointsData(file.path,function(pointsData){
+            var distance = geoTrackHelper.getTotalDistance(pointsData);
+            res.render("results",{trackPoints:"Vaibhav",points:pointsData, totalDistance:distance});
+        });
     });
-    //trackHelper.loadFile('./Documentation/MyRide.gpx',emiter);
-    res.render("results",{trackPoints:"Vaibhav",distance:distance});
 });
 
 app.get("/results",function(req,res){
@@ -65,5 +58,6 @@ var server = http.createServer(app).listen(3000,function(){
 });
 
 process.on("SIGINT",function(){
+    console.log("Process killed");
     server.close();
 });
